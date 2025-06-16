@@ -33,12 +33,23 @@ def extract_name(text):
     return None
 
 def extract_skills(text):
-    skills_section = re.search(r"Technical Skills\s*(.*?)\s*(?=\n\S|\Z)", text, re.DOTALL | re.IGNORECASE)
-    if skills_section:
-        raw_skills = skills_section.group(1)
-        skills = re.findall(r"[A-Za-z0-9#\+.\-]+", raw_skills)
-        return list(set([s.strip() for s in skills if len(s) > 1]))
+    # Match the TECHNICAL SKILLS section until the next uppercase section title
+    match = re.search(r"TECHNICAL SKILLS\s*((?:\n[•\-\*\s]*[^\n]+)+)", text, re.IGNORECASE)
+    if match:
+        raw_lines = match.group(1).strip().split("\n")
+        skills = []
+        for line in raw_lines:
+            line = re.sub(r"^[•\-\*\s]+", "", line).strip()
+            # Skip irrelevant lines
+            if not line or len(line.split()) > 6:
+                continue
+            for part in re.split(r",|/|;|\|", line):
+                cleaned = part.strip()
+                if cleaned and len(cleaned) > 1:
+                    skills.append(cleaned)
+        return list(set(skills))
     return []
+
 
 def extract_education(text):
     match = re.search(r"Education\s*(.*?)\s*(?=Summary|Experience)", text, re.DOTALL | re.IGNORECASE)
@@ -114,6 +125,20 @@ def get_jobs(skills):
     except Exception as e:
         return [f"❌ Error occurred while fetching jobs: {str(e)}"]
 
+def generate_cover_letter(name, skills, job_title="Software Developer", company_name="Your Company"):
+    skill_text = ", ".join(skills[:5]) if skills else "various relevant skills"
+    return f"""
+Dear Hiring Manager,
+
+I am writing to express my keen interest in the {job_title} position at {company_name}. With a strong foundation in {skill_text}, I am confident in my ability to contribute effectively to your team.
+
+My background in software development, coupled with my passion for problem-solving and continuous learning, makes me a strong fit for your organization. I am particularly drawn to {company_name} because of its commitment to innovation and excellence.
+
+I would welcome the opportunity to discuss how my skills and experiences align with your goals. Thank you for considering my application.
+
+Sincerely,  
+{name if name else 'Your Name'}
+"""
 
 def parse_resume(pdf_path):
     text = extract_text_from_pdf(pdf_path)
@@ -126,6 +151,7 @@ def parse_resume(pdf_path):
         "projects": extract_projects(text),
         "projects reccomendations":get_project_recommendations(text),
         "Job Vacancy Links":get_jobs(text),
+        "Cover letter":generate_cover_letter(text,text,text,text),
         }
 
 # Example
